@@ -12,12 +12,15 @@ wheels/
 # macOS
 .DS_Store
 
-# Data files (raw & processed)
-data/raw/
-data/processed/
+# Data files (raw & processed) - keep directory structure only
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
 
-# Reports (generated outputs)
-reports/
+# Reports (generated outputs) - keep directory structure only
+reports/*
+!reports/.gitkeep
 
 # Editor / IDE
 .idea/
