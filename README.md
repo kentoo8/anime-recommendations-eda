@@ -2,9 +2,12 @@
 
 [MyAnimeList Dataset (Kaggle)](https://www.kaggle.com/datasets/CooperUnion/anime-recommendations-database) を使ったアニメデータの探索的データ分析（EDA）リポジトリです。
 
+## 分析レポート (EDA Report)
+- [アニメデータセット EDA レポート](https://kentoo8.github.io/anime-recommendations-eda/anime_eda_latest.html)
+
 ## ディレクトリ構成
 
-```
+```text
 anime-recommendations-eda/
 ├── data/
 │   ├── raw/                  # 元データ（Kaggle からダウンロード）
