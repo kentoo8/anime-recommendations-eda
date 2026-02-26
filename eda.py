@@ -217,6 +217,30 @@ def fetch_data(con: duckdb.DuckDBPyConnection) -> dict:
     # 残差が大きく正＝評価の割に人気が高い（隠れた名作）
     overperform  = sorted([_row(r) for r in outliers], key=lambda x: -x["residual"])[:5]
 
+    # 11. Special Pickups (Gemini AI)
+    gemini_pickups = [
+        {
+            "category": "知的好奇心を刺激する（あるいは物議を醸した）作品",
+            "items": [
+                ["Hametsu no Mars", "破滅のマルス", "「クソアニメ界の金字塔」としての圧倒的な知名度と、その酷さを確認したい好奇心。"],
+                ["Pupa", "pupa", "原作の期待値とアニメの完成度のギャップ、過度な規制による「伝説のがっかり感」。"],
+                ["Tenkuu Danzai Skelter+Heaven", "天空断罪スケルターヘヴン", "黎明期の拙い3DCGが醸し出すシュールさが、ネタとして愛でられているため。"],
+                ["Utsu Musume Sayuri", "うつ娘サユリ", "異質なビジュアルと生理的嫌悪感が、「検索してはいけない」系のミームとして定着。"],
+                ["Shitcom", "Shitcom", "あまりの不条理さと内容の無さに、困惑を共有したい視聴者が後を絶たない。"],
+            ]
+        },
+        {
+            "category": "高評価だが露出が少ない（データ上の隠れた名作）作品",
+            "items": [
+                ["Huyao Xiao Hongniang: Yue Hong", "縁結びの妖狐ちゃん（月紅篇）", "中国アニメという枠組みへの馴染みの薄さと、視聴者による非常に高い満足度。"],
+                ["Huyao Xiao Hongniang: Wangquan Fugui", "縁結びの妖狐ちゃん（王権富貴篇）", "同上。作品の質は保証されているものの、まだ広まりきっていない「至宝」。"],
+                ["Future GPX Cyber Formula Sin", "新世紀GPXサイバーフォーミュラSIN", "往年の名作の完結編。ファンのみが視聴するため高評価だが、登録数は限定的。"],
+                ["Madang-Eul Naon Amtalg", "庭を出た雌鶏", "韓国アニメ映画の傑作。深いテーマ性が高く評価されているが、露出が少ない。"],
+                ["Future GPX Cyber Formula Zero", "新世紀GPXサイバーフォーミュラZERO", "シリーズ途中からの視聴が難しいため、登録数は伸びにくいが、作品愛が非常に強い。"],
+            ]
+        }
+    ]
+
     return {
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "total_rows": total_rows,
@@ -241,6 +265,7 @@ def fetch_data(con: duckdb.DuckDBPyConnection) -> dict:
         "corr_conform": conform,
         "corr_underperform": underperform,
         "corr_overperform": overperform,
+        "gemini_pickups": gemini_pickups,
     }
 
 
@@ -427,15 +452,27 @@ def render_html(data: dict, output_path: Path) -> None:
                  for r in data["longest"]]
     long_table = _html_table(["タイトル", "タイプ", "話数", "評価", "リスト登録数"], long_rows, highlight_col=2)
 
-    # ── セクション10: 相関ピックアップ
-    _pickup_headers = ["タイトル", "タイプ", "評価", "リスト登録数", "残差"]
-    def _pickup_rows(items):
-        return [[r["name"], r["type"], r["rating"], f"{r['members']:,}", f"{r['residual']:+.3f}"]
-                for r in items]
+    # ── セクション11: AI分析データの準備
+    gemini_map = {}
+    for category in data["gemini_pickups"]:
+        for item in category["items"]:
+            gemini_map[item[0]] = {"ja": item[1], "reason": item[2]}
 
-    conform_table    = _html_table(_pickup_headers, _pickup_rows(data["corr_conform"]))
-    underperform_table = _html_table(_pickup_headers, _pickup_rows(data["corr_underperform"]))
-    overperform_table  = _html_table(_pickup_headers, _pickup_rows(data["corr_overperform"]))
+    def _enhanced_pickup_table(items, highlight_col=None):
+        headers = ["タイトル", "日本語名", "タイプ", "評価", "登録数", "残差", "AI分析・理由"]
+        rows = []
+        for r in items:
+            g = gemini_map.get(r["name"], {})
+            rows.append([
+                r["name"],
+                g.get("ja", "—"),
+                r["type"],
+                r["rating"],
+                f"{r['members']:,}",
+                f"{r['residual']:+.3f}",
+                g.get("reason", "—")
+            ])
+        return _html_table(headers, rows, highlight_col=highlight_col)
 
     # ── JSON data (埋め込み用)
     data_json = json.dumps({
@@ -555,7 +592,7 @@ def render_html(data: dict, output_path: Path) -> None:
   </section>
 
   <section>
-    <h2>9. 評価 × log(リスト登録数) 相関</h2>
+    <h2>9. 評価 × 登録数 の相関と特筆すべき作品 (AI Pickups)</h2>
     <div style="display:grid;grid-template-columns:1fr 260px;gap:1.5rem;align-items:start">
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem">
         <p style="font-size:.85rem;color:var(--muted);margin-bottom:.5rem">散布図（最大20,000件サンプル）／Y軸は対数スケール</p>
@@ -576,16 +613,20 @@ def render_html(data: dict, output_path: Path) -> None:
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1.5rem;margin-top:1.5rem">
+    <p style="margin-top:2rem; font-size:.85rem; color:var(--muted); border-left:4px solid var(--accent); padding-left:1rem;">
+      <strong>※ AIピックアップ注記:</strong> 以下のリストは統計的な「残差（予測値からのズレ）」に基づき抽出されており、日本語タイトルおよび分析理由は Gemini AI によって生成されています。
+    </p>
+
+    <div style="display:grid;grid-template-columns:1fr;gap:2.5rem;margin-top:1.5rem">
       <div>
-        <h3 style="font-size:.9rem;color:#f87171;margin-bottom:.75rem">高評価なのにリスト登録数が少ない</h3>
-        <p style="font-size:.78rem;color:var(--muted);margin-bottom:.5rem">残差が大きく負：評価の割に登録が少ない隠れた名作候補</p>
-        {underperform_table}
+        <h3 style="font-size:.95rem;color:#f87171;margin-bottom:.5rem">💎 高評価なのにリスト登録数が少ない（隠れた名作）</h3>
+        <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem">評価の割に登録が少ない、データ上の「知る人ぞ知る」作品群です。</p>
+        {_enhanced_pickup_table(data["corr_underperform"], highlight_col=4)}
       </div>
       <div>
-        <h3 style="font-size:.9rem;color:#4ade80;margin-bottom:.75rem">評価の割にリスト登録数が多い</h3>
-        <p style="font-size:.78rem;color:var(--muted);margin-bottom:.5rem">残差が大きく正：話題性・バズ作品</p>
-        {overperform_table}
+        <h3 style="font-size:.95rem;color:#4ade80;margin-bottom:.5rem">🔥 評価の割にリスト登録数が多い（話題性・バズ作品）</h3>
+        <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem">「クソアニメ」としての知名度や、強烈な個性で評価を超えて拡散された作品群です。</p>
+        {_enhanced_pickup_table(data["corr_overperform"], highlight_col=4)}
       </div>
     </div>
   </section>
