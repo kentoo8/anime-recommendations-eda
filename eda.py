@@ -493,7 +493,10 @@ def render_html(data: dict, output_path: Path) -> None:
 </head>
 <body>
   <h1>🎌 アニメデータセット EDA レポート</h1>
-  <p class="meta">生成日時: {data['generated_at']} &nbsp;|&nbsp; データ: data/processed/anime_processed.csv</p>
+  <p class="meta">
+    生成日時: {data['generated_at']} &nbsp;|&nbsp; データ: data/processed/anime_processed.csv<br>
+    出典: <a href="https://www.kaggle.com/datasets/CooperUnion/anime-recommendations-database" target="_blank" rel="noopener noreferrer" style="color:var(--accent2);text-decoration:none;">MyAnimeList Dataset (Kaggle)</a>
+  </p>
 
   {cards_html}
 
@@ -587,8 +590,6 @@ def render_html(data: dict, output_path: Path) -> None:
     </div>
   </section>
 
-  <footer>eda.py · DuckDB + uv で生成</footer>
-
   <script>
   const d = {data_json};
   const chartDefaults = {{
@@ -606,7 +607,7 @@ def render_html(data: dict, output_path: Path) -> None:
       backgroundColor: 'rgba(124,106,247,0.7)',
       borderColor: '#7c6af7', borderWidth: 1, borderRadius: 4
     }}] }},
-    options: {{ ...chartDefaults, plugins: {{ ...chartDefaults.plugins, legend: {{ display: false }} }} }}
+    options: {{ ...chartDefaults, indexAxis: 'y', plugins: {{ ...chartDefaults.plugins, legend: {{ display: false }} }} }}
   }});
   new Chart(document.getElementById('typeChart'), {{
     type: 'bar',
